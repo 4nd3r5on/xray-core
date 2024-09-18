@@ -31,6 +31,7 @@ import (
 	"github.com/xtls/xray-core/proxy"
 	"github.com/xtls/xray-core/proxy/vless"
 	"github.com/xtls/xray-core/proxy/vless/encoding"
+	vless_inbound_callbacks "github.com/xtls/xray-core/proxy/vless/inbound/callbacks"
 	"github.com/xtls/xray-core/transport/internet/reality"
 	"github.com/xtls/xray-core/transport/internet/stat"
 	"github.com/xtls/xray-core/transport/internet/tls"
@@ -70,17 +71,20 @@ type Handler struct {
 	validator             vless.Validator
 	dns                   dns.Client
 	fallbacks             map[string]map[string]map[string]*Fallback // or nil
+	CallbackManager       *vless_inbound_callbacks.CallbackManager
 	// regexps               map[string]*regexp.Regexp       // or nil
 }
 
 // New creates a new VLess inbound handler.
 func New(ctx context.Context, config *Config, dc dns.Client, validator vless.Validator) (*Handler, error) {
 	v := core.MustFromContext(ctx)
+	cm := vless_inbound_callbacks.NewCallbackManager()
 	handler := &Handler{
 		inboundHandlerManager: v.GetFeature(feature_inbound.ManagerType()).(feature_inbound.Manager),
 		policyManager:         v.GetFeature(policy.ManagerType()).(policy.Manager),
 		dns:                   dc,
 		validator:             validator,
+		CallbackManager:       cm,
 	}
 
 	if config.Fallbacks != nil {
@@ -174,6 +178,14 @@ func (h *Handler) RemoveUser(ctx context.Context, e string) error {
 	return h.validator.Del(e)
 }
 
+func (h *Handler) GetUsers(ctx context.Context) map[string]*protocol.MemoryUser {
+	return h.validator.GetAll()
+}
+
+func (h *Handler) GetUserIDs(ctx context.Context) []string {
+	return h.validator.GetAllIDs()
+}
+
 // Network implements proxy.Inbound.Network().
 func (*Handler) Network() []net.Network {
 	return []net.Network{net.Network_TCP, net.Network_UNIX}
@@ -189,6 +201,9 @@ func (h *Handler) Process(ctx context.Context, network net.Network, connection s
 	sessionPolicy := h.policyManager.ForLevel(0)
 	if err := connection.SetReadDeadline(time.Now().Add(sessionPolicy.Timeouts.Handshake)); err != nil {
 		return errors.New("unable to set read deadline").Base(err).AtWarning()
+	}
+	if callbackID, err := h.CallbackManager.ExecOnProcessStart(&sessionPolicy); err != nil {
+		return errors.New("vmess callback failed. Callback ID: ", callbackID).Base(err)
 	}
 
 	first := buf.FromBytes(make([]byte, buf.Size))
@@ -506,6 +521,10 @@ func (h *Handler) Process(ctx context.Context, network net.Network, connection s
 	timer := signal.CancelAfterInactivity(ctx, cancel, sessionPolicy.Timeouts.ConnectionIdle)
 	inbound.Timer = timer
 	ctx = policy.ContextWithBufferPolicy(ctx, sessionPolicy.Buffer)
+
+	if callbackID, err := h.CallbackManager.ExecOnProcess(inbound); err != nil {
+		return errors.New("vmess callback failed. Callback ID: ", callbackID).Base(err)
+	}
 
 	link, err := dispatcher.Dispatch(ctx, request.Destination())
 	if err != nil {

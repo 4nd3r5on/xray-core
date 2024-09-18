@@ -97,6 +97,14 @@ func (v *TimedUserValidator) Remove(email string) bool {
 	return true
 }
 
+func (v *TimedUserValidator) GetUsers() []*protocol.MemoryUser {
+	v.RLock()
+	users := make([]*protocol.MemoryUser, len(v.users))
+	copy(users, v.users)
+	v.RUnlock()
+	return users
+}
+
 func (v *TimedUserValidator) GetBehaviorSeed() uint64 {
 	v.Lock()
 	defer v.Unlock()

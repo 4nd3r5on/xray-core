@@ -25,6 +25,7 @@ import (
 	"github.com/xtls/xray-core/features/routing"
 	"github.com/xtls/xray-core/proxy/vmess"
 	"github.com/xtls/xray-core/proxy/vmess/encoding"
+	vmess_inbound_callbacks "github.com/xtls/xray-core/proxy/vmess/inbound/callbacks"
 	"github.com/xtls/xray-core/transport/internet/stat"
 )
 
@@ -103,11 +104,13 @@ type Handler struct {
 	usersByEmail          *userByEmail
 	detours               *DetourConfig
 	sessionHistory        *encoding.SessionHistory
+	CallbackManager       *vmess_inbound_callbacks.CallbackManager
 }
 
 // New creates a new VMess inbound handler.
 func New(ctx context.Context, config *Config) (*Handler, error) {
 	v := core.MustFromContext(ctx)
+	cm := vmess_inbound_callbacks.NewCallbackManager()
 	handler := &Handler{
 		policyManager:         v.GetFeature(policy.ManagerType()).(policy.Manager),
 		inboundHandlerManager: v.GetFeature(feature_inbound.ManagerType()).(feature_inbound.Manager),
@@ -115,6 +118,7 @@ func New(ctx context.Context, config *Config) (*Handler, error) {
 		detours:               config.Detour,
 		usersByEmail:          newUserByEmail(config.GetDefaultValue()),
 		sessionHistory:        encoding.NewSessionHistory(),
+		CallbackManager:       cm,
 	}
 
 	for _, user := range config.User {
@@ -149,6 +153,10 @@ func (h *Handler) GetUser(email string) *protocol.MemoryUser {
 		h.clients.Add(user)
 	}
 	return user
+}
+
+func (h *Handler) GetUsers() []*protocol.MemoryUser {
+	return h.clients.GetUsers()
 }
 
 func (h *Handler) AddUser(ctx context.Context, user *protocol.MemoryUser) error {
@@ -213,6 +221,9 @@ func (h *Handler) Process(ctx context.Context, network net.Network, connection s
 	if err := connection.SetReadDeadline(time.Now().Add(sessionPolicy.Timeouts.Handshake)); err != nil {
 		return errors.New("unable to set read deadline").Base(err).AtWarning()
 	}
+	if callbackID, err := h.CallbackManager.ExecOnProcessStart(&sessionPolicy); err != nil {
+		return errors.New("vmess callback failed. Callback ID: ", callbackID).Base(err)
+	}
 
 	iConn := connection
 	if statConn, ok := iConn.(*stat.CounterConnection); ok {
@@ -259,6 +270,10 @@ func (h *Handler) Process(ctx context.Context, network net.Network, connection s
 	inbound.Name = "vmess"
 	inbound.CanSpliceCopy = 3
 	inbound.User = request.User
+
+	if callbackID, err := h.CallbackManager.ExecOnProcess(inbound); err != nil {
+		return errors.New("vmess callback failed. Callback ID: ", callbackID).Base(err)
+	}
 
 	sessionPolicy = h.policyManager.ForLevel(request.User.Level)
 

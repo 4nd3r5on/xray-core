@@ -50,3 +50,38 @@ func (v *Validator) Get(hash string) *protocol.MemoryUser {
 	}
 	return nil
 }
+
+func (v *Validator) GetAllIDs() []string {
+	users := []string{}
+	v.email.Range(func(key, value any) bool {
+		id, ok := key.(string)
+		if !ok {
+			return true
+		}
+		users = append(users, id)
+		return true
+	})
+	return users
+}
+
+func (v *Validator) GetAll() map[string]*protocol.MemoryUser {
+	var user any
+	var memoryUser *protocol.MemoryUser
+	var id string
+	var ok bool
+	users := map[string]*protocol.MemoryUser{}
+
+	v.email.Range(func(key, value any) bool {
+		if id, ok = key.(string); !ok {
+			return true
+		}
+		if user, ok = v.users.Load(id); !ok {
+			return true
+		}
+		if memoryUser, ok = user.(*protocol.MemoryUser); ok {
+			users[id] = memoryUser
+		}
+		return true
+	})
+	return users
+}

@@ -120,6 +120,14 @@ func (v *Validator) Get(bs []byte, command protocol.RequestCommand) (u *protocol
 	return nil, nil, nil, 0, ErrNotFound
 }
 
+func (v *Validator) GetUsers() []*protocol.MemoryUser {
+	v.RLock()
+	users := make([]*protocol.MemoryUser, len(v.users))
+	copy(users, v.users)
+	v.RUnlock()
+	return users
+}
+
 func (v *Validator) GetBehaviorSeed() uint64 {
 	v.Lock()
 	defer v.Unlock()

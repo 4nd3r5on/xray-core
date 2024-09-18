@@ -17,15 +17,17 @@ import (
 	"github.com/xtls/xray-core/core"
 	"github.com/xtls/xray-core/features/policy"
 	"github.com/xtls/xray-core/features/routing"
+	shadowsocks_callbacks "github.com/xtls/xray-core/proxy/shadowsocks/callbacks"
 	"github.com/xtls/xray-core/transport/internet/stat"
 	"github.com/xtls/xray-core/transport/internet/udp"
 )
 
 type Server struct {
-	config        *ServerConfig
-	validator     *Validator
-	policyManager policy.Manager
-	cone          bool
+	config          *ServerConfig
+	validator       *Validator
+	policyManager   policy.Manager
+	cone            bool
+	CallbackManager *shadowsocks_callbacks.ServerCallbackManager
 }
 
 // NewServer create a new Shadowsocks server.
@@ -43,11 +45,13 @@ func NewServer(ctx context.Context, config *ServerConfig) (*Server, error) {
 	}
 
 	v := core.MustFromContext(ctx)
+	cm := shadowsocks_callbacks.NewServerCallbackManager()
 	s := &Server{
-		config:        config,
-		validator:     validator,
-		policyManager: v.GetFeature(policy.ManagerType()).(policy.Manager),
-		cone:          ctx.Value("cone").(bool),
+		config:          config,
+		validator:       validator,
+		policyManager:   v.GetFeature(policy.ManagerType()).(policy.Manager),
+		cone:            ctx.Value("cone").(bool),
+		CallbackManager: cm,
 	}
 
 	return s, nil
@@ -61,6 +65,10 @@ func (s *Server) AddUser(ctx context.Context, u *protocol.MemoryUser) error {
 // RemoveUser implements proxy.UserManager.RemoveUser().
 func (s *Server) RemoveUser(ctx context.Context, e string) error {
 	return s.validator.Del(e)
+}
+
+func (s *Server) GetUsers(ctx context.Context) []*protocol.MemoryUser {
+	return s.validator.GetUsers()
 }
 
 func (s *Server) Network() []net.Network {
@@ -176,6 +184,10 @@ func (s *Server) handleUDPPayload(ctx context.Context, conn stat.Connection, dis
 			currentPacketCtx = protocol.ContextWithRequestHeader(currentPacketCtx, request)
 			udpServer.Dispatch(currentPacketCtx, *dest, data)
 		}
+	}
+
+	if callbackID, err := s.CallbackManager.ExecOnProcess(inbound); err != nil {
+		return errors.New("vmess callback failed. Callback ID: ", callbackID).Base(err)
 	}
 
 	return nil
