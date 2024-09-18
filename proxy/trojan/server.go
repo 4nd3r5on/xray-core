@@ -137,6 +137,10 @@ func (s *Server) GetUserIDs(ctx context.Context) []string {
 	return s.validator.GetAllIDs()
 }
 
+func (s *Server) GetUser(ctx context.Context, hashOrEmail string) (user *protocol.MemoryUser, exists bool) {
+	return s.validator.Load(hashOrEmail)
+}
+
 // Network implements proxy.Inbound.Network().
 func (s *Server) Network() []net.Network {
 	return []net.Network{net.Network_TCP, net.Network_UNIX}

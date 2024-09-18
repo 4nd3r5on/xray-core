@@ -120,6 +120,15 @@ func (v *Validator) Get(bs []byte, command protocol.RequestCommand) (u *protocol
 	return nil, nil, nil, 0, ErrNotFound
 }
 
+func (v *Validator) GetUserByEmail(email string) (memoryUser *protocol.MemoryUser, exists bool) {
+	for _, user := range v.users {
+		if strings.EqualFold(email, user.Email) {
+			return user, true
+		}
+	}
+	return nil, false
+}
+
 func (v *Validator) GetUsers() []*protocol.MemoryUser {
 	v.RLock()
 	users := make([]*protocol.MemoryUser, len(v.users))

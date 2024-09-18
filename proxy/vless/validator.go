@@ -11,6 +11,7 @@ import (
 
 type Validator interface {
 	Get(id uuid.UUID) *protocol.MemoryUser
+	Load(idOrEmail string) (memoryUser *protocol.MemoryUser, exists bool)
 	Add(u *protocol.MemoryUser) error
 	Del(email string) error
 	GetAllIDs() []string
@@ -58,6 +59,19 @@ func (v *MemoryValidator) Get(id uuid.UUID) *protocol.MemoryUser {
 		return u.(*protocol.MemoryUser)
 	}
 	return nil
+}
+
+func (v *MemoryValidator) Load(idOrEmail string) (memoryUser *protocol.MemoryUser, exists bool) {
+	var user any
+	if user, exists = v.email.Load(idOrEmail); exists {
+		return user.(*protocol.MemoryUser), exists
+	}
+	if id, err := uuid.ParseString(idOrEmail); err == nil {
+		if user, exists = v.users.Load(id); exists {
+			return user.(*protocol.MemoryUser), exists
+		}
+	}
+	return nil, false
 }
 
 func (v *MemoryValidator) GetAllIDs() []string {

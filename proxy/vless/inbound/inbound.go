@@ -173,6 +173,10 @@ func (h *Handler) AddUser(ctx context.Context, u *protocol.MemoryUser) error {
 	return h.validator.Add(u)
 }
 
+func (h *Handler) GetUser(ctx context.Context, idOrEmail string) (user *protocol.MemoryUser, exists bool) {
+	return h.validator.Load(idOrEmail)
+}
+
 // RemoveUser implements proxy.UserManager.RemoveUser().
 func (h *Handler) RemoveUser(ctx context.Context, e string) error {
 	return h.validator.Del(e)

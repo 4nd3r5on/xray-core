@@ -155,6 +155,10 @@ func (h *Handler) GetUser(email string) *protocol.MemoryUser {
 	return user
 }
 
+func (h *Handler) GetUserIfExists(email string) (user *protocol.MemoryUser, exists bool) {
+	return h.usersByEmail.Get(email)
+}
+
 func (h *Handler) GetUsers() []*protocol.MemoryUser {
 	return h.clients.GetUsers()
 }

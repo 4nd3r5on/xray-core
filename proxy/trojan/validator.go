@@ -51,6 +51,17 @@ func (v *Validator) Get(hash string) *protocol.MemoryUser {
 	return nil
 }
 
+func (v *Validator) Load(hashOrEmail string) (memoryUser *protocol.MemoryUser, exists bool) {
+	var user any
+	if user, exists = v.email.Load(hashOrEmail); exists {
+		return user.(*protocol.MemoryUser), exists
+	}
+	if user, exists = v.users.Load(hashOrEmail); exists {
+		return user.(*protocol.MemoryUser), exists
+	}
+	return nil, false
+}
+
 func (v *Validator) GetAllIDs() []string {
 	users := []string{}
 	v.email.Range(func(key, value any) bool {
