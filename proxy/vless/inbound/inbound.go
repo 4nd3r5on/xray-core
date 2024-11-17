@@ -198,6 +198,10 @@ func (h *Handler) GetUsersCount(context.Context) int64 {
 	return h.validator.GetCount()
 }
 
+func (h *Handler) GetAllEmails(ctx context.Context) []string {
+	return h.validator.GetAllEmails()
+}
+
 // Network implements proxy.Inbound.Network().
 func (*Handler) Network() []net.Network {
 	return []net.Network{net.Network_TCP, net.Network_UNIX}
