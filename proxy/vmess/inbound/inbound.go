@@ -114,6 +114,7 @@ type Handler struct {
 
 // New creates a new VMess inbound handler.
 func New(ctx context.Context, config *Config) (*Handler, error) {
+	cm := vmess_inbound_callbacks.NewCallbackManager()
 	v := core.MustFromContext(ctx)
 	handler := &Handler{
 		policyManager:         v.GetFeature(policy.ManagerType()).(policy.Manager),
@@ -122,6 +123,7 @@ func New(ctx context.Context, config *Config) (*Handler, error) {
 		detours:               config.Detour,
 		usersByEmail:          newUserByEmail(config.GetDefaultValue()),
 		sessionHistory:        encoding.NewSessionHistory(),
+		CallbackManager:       cm,
 	}
 
 	for _, user := range config.User {
