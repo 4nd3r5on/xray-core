@@ -16,6 +16,7 @@ type Validator interface {
 	GetByEmail(email string) *protocol.MemoryUser
 	GetAll() []*protocol.MemoryUser
 	GetCount() int64
+	GetAllEmails() []string
 }
 
 // MemoryValidator stores valid VLESS users.
@@ -88,4 +89,13 @@ func (v *MemoryValidator) GetCount() int64 {
 		return true
 	})
 	return c
+}
+
+func (v *MemoryValidator) GetAllEmails() []string {
+	emails := make([]string, 0, 100)
+	v.email.Range(func(key, value interface{}) bool {
+		emails = append(emails, key.(string))
+		return true
+	})
+	return emails
 }

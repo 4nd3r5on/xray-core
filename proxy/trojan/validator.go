@@ -79,3 +79,12 @@ func (v *Validator) GetCount() int64 {
 	})
 	return c
 }
+
+func (v *Validator) GetAllEmails() []string {
+	emails := make([]string, 0, 100)
+	v.email.Range(func(key, value interface{}) bool {
+		emails = append(emails, key.(string))
+		return true
+	})
+	return emails
+}

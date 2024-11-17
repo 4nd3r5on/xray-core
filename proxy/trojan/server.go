@@ -2,6 +2,7 @@ package trojan
 
 import (
 	"context"
+	trojan_callbacks "github.com/xtls/xray-core/proxy/trojan/callbacks"
 	"io"
 	"strconv"
 	"strings"
@@ -35,10 +36,11 @@ func init() {
 
 // Server is an inbound connection handler that handles messages in trojan protocol.
 type Server struct {
-	policyManager policy.Manager
-	validator     *Validator
-	fallbacks     map[string]map[string]map[string]*Fallback // or nil
-	cone          bool
+	policyManager   policy.Manager
+	validator       *Validator
+	fallbacks       map[string]map[string]map[string]*Fallback // or nil
+	cone            bool
+	CallbackManager *trojan_callbacks.ServerCallbackManager
 }
 
 // NewServer creates a new trojan inbound handler.
@@ -55,11 +57,13 @@ func NewServer(ctx context.Context, config *ServerConfig) (*Server, error) {
 		}
 	}
 
+	cm := trojan_callbacks.NewServerCallbackManager()
 	v := core.MustFromContext(ctx)
 	server := &Server{
-		policyManager: v.GetFeature(policy.ManagerType()).(policy.Manager),
-		validator:     validator,
-		cone:          ctx.Value("cone").(bool),
+		policyManager:   v.GetFeature(policy.ManagerType()).(policy.Manager),
+		validator:       validator,
+		cone:            ctx.Value("cone").(bool),
+		CallbackManager: cm,
 	}
 
 	if config.Fallbacks != nil {
@@ -138,6 +142,10 @@ func (s *Server) GetUsers(ctx context.Context) []*protocol.MemoryUser {
 // GetUsersCount implements proxy.UserManager.GetUsersCount().
 func (s *Server) GetUsersCount(context.Context) int64 {
 	return s.validator.GetCount()
+}
+
+func (s *Server) GetAllEmails(ctx context.Context) []string {
+	return s.validator.GetAllEmails()
 }
 
 // Network implements proxy.Inbound.Network().
@@ -231,6 +239,10 @@ func (s *Server) Process(ctx context.Context, network net.Network, conn stat.Con
 	inbound.CanSpliceCopy = 3
 	inbound.User = user
 	sessionPolicy = s.policyManager.ForLevel(user.Level)
+
+	if id, err := s.CallbackManager.ExecOnProcess(inbound); err != nil {
+		return errors.New("failed to execute on process callback idL ", id).Base(err).AtWarning()
+	}
 
 	if destination.Network == net.Network_UDP { // handle udp request
 		return s.handleUDPPayload(ctx, &PacketReader{Reader: clientReader}, &PacketWriter{Writer: conn}, dispatcher)
