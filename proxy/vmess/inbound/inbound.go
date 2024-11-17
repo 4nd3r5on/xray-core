@@ -148,24 +148,11 @@ func (*Handler) Network() []net.Network {
 	return []net.Network{net.Network_TCP, net.Network_UNIX}
 }
 
-func (h *Handler) GetOrGenerateUser(email string) *protocol.MemoryUser {
-	user, existing := h.usersByEmail.GetOrGenerate(email)
-	if !existing {
-		h.clients.Add(user)
-	}
-	return user
-}
-
-func (h *Handler) GetUser(ctx context.Context, email string) *protocol.MemoryUser {
 	return h.usersByEmail.Get(email)
 }
 
 func (h *Handler) GetUsers(ctx context.Context) []*protocol.MemoryUser {
 	return h.clients.GetUsers()
-}
-
-func (h *Handler) GetUsersCount(context.Context) int64 {
-	return h.clients.GetCount()
 }
 
 func (h *Handler) AddUser(ctx context.Context, user *protocol.MemoryUser) error {
@@ -340,8 +327,6 @@ func (h *Handler) generateCommand(ctx context.Context, request *protocol.Request
 				}
 
 				errors.LogDebug(ctx, "pick detour handler for port ", port, " for ", availableMin, " minutes.")
-				user := inboundHandler.GetOrGenerateUser(request.User.Email)
-				if user == nil {
 					return nil
 				}
 				account := user.Account.(*vmess.MemoryAccount)

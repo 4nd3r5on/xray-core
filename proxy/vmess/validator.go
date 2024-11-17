@@ -56,14 +56,6 @@ func (v *TimedUserValidator) Add(u *protocol.MemoryUser) error {
 	return nil
 }
 
-func (v *TimedUserValidator) GetUsers() []*protocol.MemoryUser {
-	v.Lock()
-	defer v.Unlock()
-	dst := make([]*protocol.MemoryUser, len(v.users))
-	copy(dst, v.users)
-	return dst
-}
-
 func (v *TimedUserValidator) GetCount() int64 {
 	v.Lock()
 	defer v.Unlock()
@@ -109,6 +101,14 @@ func (v *TimedUserValidator) Remove(email string) bool {
 	v.users = v.users[:ulen-1]
 
 	return true
+}
+
+func (v *TimedUserValidator) GetUsers() []*protocol.MemoryUser {
+	v.RLock()
+	users := make([]*protocol.MemoryUser, len(v.users))
+	copy(users, v.users)
+	v.RUnlock()
+	return users
 }
 
 func (v *TimedUserValidator) GetBehaviorSeed() uint64 {

@@ -178,8 +178,15 @@ func (h *Handler) GetUser(ctx context.Context, email string) *protocol.MemoryUse
 }
 
 // GetUsers implements proxy.UserManager.GetUsers().
-func (h *Handler) GetUsers(ctx context.Context) []*protocol.MemoryUser {
+func (h *Handler) GetUsers(ctx context.Context) map[string]*protocol.MemoryUser {
 	return h.validator.GetAll()
+}
+
+func (h *Handler) GetUserIDs(ctx context.Context) []string {
+	return h.validator.GetAllEmails()
+}
+func (h *Handler) GetUserEmails(ctx context.Context) []string {
+	return h.validator.GetAllEmails()
 }
 
 // GetUsersCount implements proxy.UserManager.GetUsersCount().
@@ -491,12 +498,12 @@ func (h *Handler) Process(ctx context.Context, network net.Network, connection s
 				rawInput = (*bytes.Buffer)(unsafe.Pointer(p + r.Offset))
 			}
 		} else {
-			return errors.New("account " + account.ID.String() + " is not able to use the flow " + requestAddons.Flow).AtWarning()
+			return errors.New(account.ID.String() + " is not able to use " + requestAddons.Flow).AtWarning()
 		}
 	case "":
 		inbound.CanSpliceCopy = 3
 		if account.Flow == vless.XRV && (request.Command == protocol.RequestCommandTCP || isMuxAndNotXUDP(request, first)) {
-			return errors.New("account " + account.ID.String() + " is rejected since the client flow is empty. Note that the pure TLS proxy has certain TLS in TLS characters.").AtWarning()
+			return errors.New(account.ID.String() + " is not able to use \"\". Note that the pure TLS proxy has certain TLS in TLS characters.").AtWarning()
 		}
 	default:
 		return errors.New("unknown request flow " + requestAddons.Flow).AtWarning()

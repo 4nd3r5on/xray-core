@@ -58,6 +58,10 @@ func (s *Server) AddUser(ctx context.Context, u *protocol.MemoryUser) error {
 	return s.validator.Add(u)
 }
 
+func (s *Server) GetUserByEmail(ctx context.Context, email string) (memoryUser *protocol.MemoryUser, exists bool) {
+	return s.validator.GetUserByEmail(email)
+}
+
 // RemoveUser implements proxy.UserManager.RemoveUser().
 func (s *Server) RemoveUser(ctx context.Context, e string) error {
 	return s.validator.Del(e)

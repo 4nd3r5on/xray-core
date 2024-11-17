@@ -51,6 +51,30 @@ func (v *Validator) Get(hash string) *protocol.MemoryUser {
 	return nil
 }
 
+func (v *Validator) Load(hashOrEmail string) (memoryUser *protocol.MemoryUser, exists bool) {
+	var user any
+	if user, exists = v.email.Load(hashOrEmail); exists {
+		return user.(*protocol.MemoryUser), exists
+	}
+	if user, exists = v.users.Load(hashOrEmail); exists {
+		return user.(*protocol.MemoryUser), exists
+	}
+	return nil, false
+}
+
+func (v *Validator) GetAllIDs() []string {
+	users := []string{}
+	v.email.Range(func(key, value any) bool {
+		id, ok := key.(string)
+		if !ok {
+			return true
+		}
+		users = append(users, id)
+		return true
+	})
+	return users
+}
+
 // Get a trojan user with hashed key, nil if user doesn't exist.
 func (v *Validator) GetByEmail(email string) *protocol.MemoryUser {
 	u, _ := v.email.Load(email)
