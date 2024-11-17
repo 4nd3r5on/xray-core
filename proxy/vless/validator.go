@@ -14,7 +14,7 @@ type Validator interface {
 	Add(u *protocol.MemoryUser) error
 	Del(email string) error
 	GetByEmail(email string) *protocol.MemoryUser
-	GetAll() map[string]*protocol.MemoryUser
+	GetAll() []*protocol.MemoryUser
 	GetCount() int64
 	GetAllEmails() []string
 }
@@ -90,6 +90,7 @@ func (v *MemoryValidator) GetAll() map[string]*protocol.MemoryUser {
 		}
 		return true
 	})
+	return u
 }
 
 // Get users count

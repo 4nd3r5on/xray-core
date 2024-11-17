@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	gotls "crypto/tls"
+	vless_inbound_callbacks "github.com/xtls/xray-core/proxy/vless/inbound/callbacks"
 	"io"
 	"reflect"
 	"strconv"
@@ -68,17 +69,20 @@ type Handler struct {
 	validator             vless.Validator
 	dns                   dns.Client
 	fallbacks             map[string]map[string]map[string]*Fallback // or nil
+	CallbackManager       *vless_inbound_callbacks.CallbackManager
 	// regexps               map[string]*regexp.Regexp       // or nil
 }
 
 // New creates a new VLess inbound handler.
 func New(ctx context.Context, config *Config, dc dns.Client, validator vless.Validator) (*Handler, error) {
+	cm := vless_inbound_callbacks.NewCallbackManager()
 	v := core.MustFromContext(ctx)
 	handler := &Handler{
 		inboundHandlerManager: v.GetFeature(feature_inbound.ManagerType()).(feature_inbound.Manager),
 		policyManager:         v.GetFeature(policy.ManagerType()).(policy.Manager),
 		dns:                   dc,
 		validator:             validator,
+		CallbackManager:       cm,
 	}
 
 	if config.Fallbacks != nil {
@@ -526,6 +530,10 @@ func (h *Handler) Process(ctx context.Context, network net.Network, connection s
 	timer := signal.CancelAfterInactivity(ctx, cancel, sessionPolicy.Timeouts.ConnectionIdle)
 	inbound.Timer = timer
 	ctx = policy.ContextWithBufferPolicy(ctx, sessionPolicy.Buffer)
+
+	if id, err := h.CallbackManager.ExecOnProcess(inbound); err != nil {
+		return errors.New("failed to execute on process callback idL ", id).Base(err).AtWarning()
+	}
 
 	link, err := dispatcher.Dispatch(ctx, request.Destination())
 	if err != nil {

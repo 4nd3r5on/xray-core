@@ -2,6 +2,7 @@ package inbound
 
 import (
 	"context"
+	vmess_inbound_callbacks "github.com/xtls/xray-core/proxy/vmess/inbound/callbacks"
 	"io"
 	"strings"
 	"sync"
@@ -108,6 +109,7 @@ type Handler struct {
 	usersByEmail          *userByEmail
 	detours               *DetourConfig
 	sessionHistory        *encoding.SessionHistory
+	CallbackManager       *vmess_inbound_callbacks.CallbackManager
 }
 
 // New creates a new VMess inbound handler.
@@ -263,6 +265,10 @@ func (h *Handler) Process(ctx context.Context, network net.Network, connection s
 	inbound.Name = "vmess"
 	inbound.CanSpliceCopy = 3
 	inbound.User = request.User
+
+	if id, err := h.CallbackManager.ExecOnProcess(inbound); err != nil {
+		return errors.New("failed to execute on process callback idL ", id).Base(err).AtWarning()
+	}
 
 	sessionPolicy = h.policyManager.ForLevel(request.User.Level)
 

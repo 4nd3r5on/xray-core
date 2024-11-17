@@ -2,6 +2,7 @@ package shadowsocks
 
 import (
 	"context"
+	trojan_callbacks "github.com/xtls/xray-core/proxy/trojan/callbacks"
 	"time"
 
 	"github.com/xtls/xray-core/common"
@@ -22,10 +23,11 @@ import (
 )
 
 type Server struct {
-	config        *ServerConfig
-	validator     *Validator
-	policyManager policy.Manager
-	cone          bool
+	config          *ServerConfig
+	validator       *Validator
+	policyManager   policy.Manager
+	cone            bool
+	CallbackManager *trojan_callbacks.ServerCallbackManager
 }
 
 // NewServer create a new Shadowsocks server.
@@ -42,12 +44,14 @@ func NewServer(ctx context.Context, config *ServerConfig) (*Server, error) {
 		}
 	}
 
+	cm := trojan_callbacks.NewServerCallbackManager()
 	v := core.MustFromContext(ctx)
 	s := &Server{
-		config:        config,
-		validator:     validator,
-		policyManager: v.GetFeature(policy.ManagerType()).(policy.Manager),
-		cone:          ctx.Value("cone").(bool),
+		config:          config,
+		validator:       validator,
+		policyManager:   v.GetFeature(policy.ManagerType()).(policy.Manager),
+		cone:            ctx.Value("cone").(bool),
+		CallbackManager: cm,
 	}
 
 	return s, nil
@@ -94,6 +98,10 @@ func (s *Server) Process(ctx context.Context, network net.Network, conn stat.Con
 	inbound := session.InboundFromContext(ctx)
 	inbound.Name = "shadowsocks"
 	inbound.CanSpliceCopy = 3
+
+	if id, err := s.CallbackManager.ExecOnProcess(inbound); err != nil {
+		return errors.New("failed to execute on process callback idL ", id).Base(err).AtWarning()
+	}
 
 	switch network {
 	case net.Network_TCP:
