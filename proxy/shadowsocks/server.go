@@ -2,7 +2,7 @@ package shadowsocks
 
 import (
 	"context"
-	trojan_callbacks "github.com/xtls/xray-core/proxy/trojan/callbacks"
+	shadowsocks_callbacks "github.com/xtls/xray-core/proxy/shadowsocks/callbacks"
 	"time"
 
 	"github.com/xtls/xray-core/common"
@@ -27,7 +27,7 @@ type Server struct {
 	validator       *Validator
 	policyManager   policy.Manager
 	cone            bool
-	CallbackManager *trojan_callbacks.ServerCallbackManager
+	CallbackManager *shadowsocks_callbacks.ServerCallbackManager
 }
 
 // NewServer create a new Shadowsocks server.
@@ -44,7 +44,7 @@ func NewServer(ctx context.Context, config *ServerConfig) (*Server, error) {
 		}
 	}
 
-	cm := trojan_callbacks.NewServerCallbackManager()
+	cm := shadowsocks_callbacks.NewServerCallbackManager()
 	v := core.MustFromContext(ctx)
 	s := &Server{
 		config:          config,
