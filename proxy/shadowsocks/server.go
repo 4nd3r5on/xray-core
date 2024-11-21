@@ -95,10 +95,6 @@ func (s *Server) Process(ctx context.Context, network net.Network, conn stat.Con
 	inbound.Name = "shadowsocks"
 	inbound.CanSpliceCopy = 3
 
-	if id, err := s.CallbackManager.ExecOnProcess(inbound); err != nil {
-		return errors.New("failed to execute on process callback idL ", id).Base(err).AtWarning()
-	}
-
 	switch network {
 	case net.Network_TCP:
 		return s.handleConnection(ctx, conn, dispatcher)
@@ -228,6 +224,10 @@ func (s *Server) handleConnection(ctx context.Context, conn stat.Connection, dis
 		panic("no inbound metadata")
 	}
 	inbound.User = request.User
+
+	if id, err := s.CallbackManager.ExecOnProcess(inbound); err != nil {
+		return errors.New("failed to execute on process callback idL ", id).Base(err).AtWarning()
+	}
 
 	dest := request.Destination()
 	ctx = log.ContextWithAccessMessage(ctx, &log.AccessMessage{
