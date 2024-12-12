@@ -14,7 +14,7 @@ type Validator interface {
 	Add(u *protocol.MemoryUser) error
 	Del(email string) error
 	GetByEmail(email string) *protocol.MemoryUser
-	GetAll() []*protocol.MemoryUser
+	GetAll() map[string]*protocol.MemoryUser
 	GetCount() int64
 	GetAllEmails() []string
 }
@@ -76,7 +76,7 @@ func (v *MemoryValidator) GetAll() map[string]*protocol.MemoryUser {
 	var memoryUser *protocol.MemoryUser
 	var id string
 	var ok bool
-	users := map[string]*protocol.MemoryUser{}
+	u := map[string]*protocol.MemoryUser{}
 
 	v.email.Range(func(key, value any) bool {
 		if id, ok = key.(string); !ok {
@@ -86,7 +86,7 @@ func (v *MemoryValidator) GetAll() map[string]*protocol.MemoryUser {
 			return true
 		}
 		if memoryUser, ok = user.(*protocol.MemoryUser); ok {
-			users[id] = memoryUser
+			u[id] = memoryUser
 		}
 		return true
 	})

@@ -81,11 +81,12 @@ func (v *userByEmail) GetOrGenerate(email string) (*protocol.MemoryUser, bool) {
 	return user, found
 }
 
-func (v *userByEmail) Get(email string) *protocol.MemoryUser {
+func (v *userByEmail) Get(email string) (user *protocol.MemoryUser, exists bool) {
 	email = strings.ToLower(email)
 	v.Lock()
-	defer v.Unlock()
-	return v.cache[email]
+	u, e := v.cache[email]
+	v.Unlock()
+	return u, e
 }
 
 func (v *userByEmail) Remove(email string) bool {
@@ -152,6 +153,7 @@ func (*Handler) Network() []net.Network {
 	return []net.Network{net.Network_TCP, net.Network_UNIX}
 }
 
+func (h *Handler) GetUser(ctx context.Context, email string) (user *protocol.MemoryUser, exists bool) {
 	return h.usersByEmail.Get(email)
 }
 
@@ -335,6 +337,8 @@ func (h *Handler) generateCommand(ctx context.Context, request *protocol.Request
 				}
 
 				errors.LogDebug(ctx, "pick detour handler for port ", port, " for ", availableMin, " minutes.")
+				user, exists := inboundHandler.GetUser(ctx, request.User.Email)
+				if user == nil || !exists {
 					return nil
 				}
 				account := user.Account.(*vmess.MemoryAccount)
