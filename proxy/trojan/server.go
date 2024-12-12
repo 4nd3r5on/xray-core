@@ -140,7 +140,7 @@ func (s *Server) GetAllEmails(ctx context.Context) []string {
 }
 
 // GetUser implements proxy.UserManager.GetUser().
-func (s *Server) GetUser(ctx context.Context, hashOrEmail string) (user *protocol.MemoryUser, exists bool) {
+func (s *Server) GetUser(ctx context.Context, hashOrEmail string) *protocol.MemoryUser {
 	return s.validator.Load(hashOrEmail)
 }
 

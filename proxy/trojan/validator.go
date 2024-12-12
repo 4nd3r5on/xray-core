@@ -51,15 +51,15 @@ func (v *Validator) Get(hash string) *protocol.MemoryUser {
 	return nil
 }
 
-func (v *Validator) Load(hashOrEmail string) (memoryUser *protocol.MemoryUser, exists bool) {
+func (v *Validator) Load(hashOrEmail string) *protocol.MemoryUser {
 	var user any
+	var exists bool
 	if user, exists = v.email.Load(hashOrEmail); exists {
-		return user.(*protocol.MemoryUser), exists
+		return user.(*protocol.MemoryUser)
+	} else if user, exists = v.users.Load(hashOrEmail); exists {
+		return user.(*protocol.MemoryUser)
 	}
-	if user, exists = v.users.Load(hashOrEmail); exists {
-		return user.(*protocol.MemoryUser), exists
-	}
-	return nil, false
+	return nil
 }
 
 func (v *Validator) GetAllIDs() []string {
